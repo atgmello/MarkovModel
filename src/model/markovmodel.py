@@ -63,6 +63,20 @@ class MarkovModel(object):
 # TODO: change session end transition probability. Make it point to itself
 
 # %%
+def simulate_chain(chain, transition_matrix, max_chain_length):
+    if len(chain) == max_chain_length:
+        return chain
+    new_chain = chain.copy()
+
+    current_state = chain[-1]
+    transition_prob = transition_matrix[current_state]
+    next_state = np.random.choice(list(range(len(transition_matrix))),
+                                  p=transition_matrix[current_state])
+
+    new_chain.append(next_state)
+    return simulate_chain(new_chain, transition_matrix, max_chain_length)
+
+# %%
 def markov_mean(m):
     if np.sum(m) > 0.0:
         return np.sum(m, axis=0)/np.sum(m)
