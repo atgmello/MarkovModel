@@ -21,6 +21,48 @@ event_dict[31] = 'session-end'
 
 
 # %%
+class MarkovModel(object):
+    """docstring for MarkovModel."""
+
+    def __init__(self, n_states=None, transition_matrix=None):
+        super(MarkovModel, self).__init__()
+        if n_states is not None and transition_matrix is None:
+            self.transition_matrix = np.zeros((n_states, n_states))
+            self.prediction_matrix = np.zeros(n_states)
+        elif transition_matrix is not None:
+            self.transition_matrix = transition_matrix
+            self.n_states = len(transition_matrix)
+            self.prediction_matrix = np.zeros(self.n_states)
+        else:
+            raise ValueError("Either n_states or transition_matrix"
+                             "are required for building a MarkovModel.")
+
+    def train(self, x):
+        # Check if self.transition_matrix isn't already "trained"
+        if np.allclose(self.transition_matrix,
+                       np.zeros((self.n_state, self.n_states))):
+            # If interested in the transition matrix for only one user
+            if 'person' in x.columns:
+                self.transition_matrix = \
+                    get_user_session_journey(x, n_states=n_states)
+            # If interested in the transition matrix for all users
+            # TODO: is this checking really necessary?
+            elif 'session' in x.columns:
+                self.transition_matrix = get_mean_transition_matrix(
+                                            get_all_users_session_journeys(x))
+
+        self.prediction_matrix = np.zeros(len(self.transition_matrix))
+
+        return self
+
+    def predict(self, x):
+        return self.prediction_matrix[x]
+
+
+# %%
+# TODO: change session end transition probability. Make it point to itself
+
+# %%
 def markov_mean(m):
     if np.sum(m) > 0.0:
         return np.sum(m, axis=0)/np.sum(m)
