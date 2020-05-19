@@ -74,6 +74,12 @@ def simulate_chain(chain, transition_matrix, max_chain_length):
                                   p=transition_matrix[current_state])
 
     new_chain.append(next_state)
+
+    # Returns if reaches ending state
+    if current_state == next_state \
+       and transition_matrix[next_state][next_state] == 1.0:
+        return chain
+
     return simulate_chain(new_chain, transition_matrix, max_chain_length)
 
 # %%
