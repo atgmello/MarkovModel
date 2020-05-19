@@ -27,20 +27,23 @@ class MarkovModel(object):
     def __init__(self, n_states=None, transition_matrix=None):
         super(MarkovModel, self).__init__()
         if n_states is not None and transition_matrix is None:
-            self.transition_matrix = np.zeros((n_states, n_states))
-            self.prediction_matrix = np.zeros(n_states)
+            self.n_states = n_states
+            self.transition_matrix = np.zeros((self.n_states, self.n_states))
+            self.prediction_matrix = np.zeros(self.n_states)
         elif transition_matrix is not None:
             self.transition_matrix = transition_matrix
-            self.n_states = len(transition_matrix)
+            self.n_states = len(self.transition_matrix)
             self.prediction_matrix = np.zeros(self.n_states)
         else:
             raise ValueError("Either n_states or transition_matrix"
                              "are required for building a MarkovModel.")
 
-    def train(self, x):
+    def train(self, x=None, start_state=0,
+              target_state=1, max_chain_length=1_000,
+              n_training_chains=10_000):
         # Check if self.transition_matrix isn't already "trained"
         if np.allclose(self.transition_matrix,
-                       np.zeros((self.n_state, self.n_states))):
+                       np.zeros((self.n_states, self.n_states))):
             # If interested in the transition matrix for only one user
             if 'person' in x.columns:
                 self.transition_matrix = \
@@ -51,7 +54,31 @@ class MarkovModel(object):
                 self.transition_matrix = get_mean_transition_matrix(
                                             get_all_users_session_journeys(x))
 
-        self.prediction_matrix = np.zeros(len(self.transition_matrix))
+        # Simulate markov chains starting from start_state
+        aux_chains = simulate_chain_list(start_state,
+                                         transition_matrix,
+                                         max_chain_length,
+                                         n_training_chains)
+
+        mean_chain_length = np.mean(list(map(len, list(aux_chains))))
+        # Having the mean chain length is important for setting a
+        # more reasonable maximum chain lenght for the simulations.
+
+        # Simulate markov chains for each possible state
+        training_chains = map(lambda state:
+                              simulate_chain_list(state,
+                                                  transition_matrix,
+                                                  mean_chain_length,
+                                                  n_training_chains),
+                              range(self.n_states))
+
+        # Calculate probability of seen the `target_state` in each
+        # markov chain for each possible state
+        probability_to_target_state = partial(probability_to_state,
+                                              target_state)
+        proba = map(probability_to_target_state, training_chains)
+
+        self.prediction_matrix = list(proba)
 
         return self
 
@@ -81,6 +108,37 @@ def simulate_chain(chain, transition_matrix, max_chain_length):
         return chain
 
     return simulate_chain(new_chain, transition_matrix, max_chain_length)
+
+
+# %%
+def simulate_chain_list(initial_state, transition_matrix,
+                        max_chain_length, n_simulations):
+    chains = map(lambda x:
+                 simulate_chain([x], list(transition_matrix),
+                                max_chain_length),
+                 np.repeat(initial_state, n_simulations))
+    return chains
+
+# %%
+def probability_to_state(state, chain_list):
+    """
+        Given a list of Markov Chains, checks wether the
+        given `state` is present in each one of the lists.
+
+        Then, based on this count, estimates the probability
+        of finding the target state.
+    """
+
+    state_is_in = partial(is_in, state)
+    bool_list = list(map(state_is_in, chain_list))
+    proba = bool_list.count(True)/len(bool_list)
+
+    return proba
+
+
+# %%
+def is_in(x, l):
+    return x in set(l)
 
 # %%
 def markov_mean(m):
