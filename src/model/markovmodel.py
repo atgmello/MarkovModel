@@ -1,4 +1,3 @@
-# %%
 import numpy as np
 import pandas as pd
 import concurrent.futures
@@ -8,7 +7,6 @@ from src.data.load_clean_data import get_events_df
 
 import time
 
-# %%
 df, cat_dict = get_events_df("./data/events_v5.csv", nrows=500_000,
                              usecols=['person',
                                       'timestamp',
@@ -18,15 +16,12 @@ event_dict = cat_dict['event']
 event_dict[30] = 'session-start'
 event_dict[31] = 'session-end'
 
-# %%
 df.tail()
 
-# %%
 print(df['timestamp'].min())
 print(df['timestamp'].max())
 
 
-# %%
 class MarkovModel(object):
     """docstring for MarkovModel."""
 
@@ -105,12 +100,10 @@ class MarkovModel(object):
         return self.prediction_matrix[x]
 
 
-# %%
 @curry
 def is_in(x, l):
     return x in set(l)
 
-# %%
 @curry
 def simulate_chain(chain, transition_matrix, max_chain_length=100):
     # Return if reaches max_chain_length
@@ -132,7 +125,6 @@ def simulate_chain(chain, transition_matrix, max_chain_length=100):
     return simulate_chain(new_chain, transition_matrix, max_chain_length)
 
 
-# %%
 def test_simulte_chain():
     tm = np.array([[0.5, 0.45, 0.05], [0.2, 0.79, 0.01], [0.0, 0.0, 1.0]])
     chain = simulate_chain([0], list(tm), 10)
@@ -141,10 +133,8 @@ def test_simulte_chain():
     print(has_2)
 
 
-# %%
 test_simulte_chain()
 
-# %%
 @curry
 def simulate_chain_list(initial_state, transition_matrix,
                         max_chain_length, n_simulations):
@@ -155,7 +145,6 @@ def simulate_chain_list(initial_state, transition_matrix,
     return chains
 
 
-# %%
 def test_simulate_chain_list():
     tm = np.array([[0.5, 0.45, 0.05], [0.2, 0.79, 0.01], [0.0, 0.0, 1.0]])
     # chains = map(lambda x: simulate_chain([x], list(tm), 20), np.repeat(0, 40))
@@ -167,11 +156,9 @@ def test_simulate_chain_list():
     print(list(chains))
 
 
-# %%
 test_simulate_chain_list()
 
 
-# %%
 @curry
 def probability_to_state(state, chain_list):
     """
@@ -189,25 +176,21 @@ def probability_to_state(state, chain_list):
     return proba
 
 
-# %%
 def markov_mean(m):
     return np.sum(m, axis=0)/np.sum(m)
 
 
-# %%
 def zero_division_guard(f):
     def decorated_f(row):
         return row if sum(row) == 0.0 else f(row)
     return decorated_f
 
 
-# %%
 @zero_division_guard
 def calculate_probability(row):
     return row/np.sum(row)
 
 
-# %%
 def generate_transition_matrix(states, n_states, end_state=None):
     """
     Retrieves transition matrix from given states.
@@ -264,7 +247,6 @@ def generate_transition_matrix(states, n_states, end_state=None):
     return transition_matrix
 
 
-# %%
 # Test generate_transition_matrix
 def test_3_events_list_5_total():
     # Possible events: 0,1,2,3,4
@@ -285,12 +267,10 @@ def test_3_events_list_5_total():
         assert (np.sum(row) == 1.0)
 
 
-# %%
 # Run test
 test_3_events_list_5_total()
 
 
-# %%
 def add_beginning_end_events(session_event_pairs,
                              beginning_event, end_event):
     """
@@ -326,7 +306,6 @@ def add_beginning_end_events(session_event_pairs,
         return (first_pair[1], end_event, beginning_event)
 
 
-# %%
 @curry
 def get_time_sorted_events_list(df, n_states):
     """
@@ -347,7 +326,6 @@ def get_time_sorted_events_list(df, n_states):
     return events_list
 
 
-# %%
 def get_mean_transition_matrix(m):
     """
     Calculate mean transition matrix from given matrices.
@@ -369,7 +347,6 @@ def get_mean_transition_matrix(m):
     return mean_matrix
 
 
-# %%
 @curry
 def get_idxs(df, k):
     """
@@ -384,7 +361,6 @@ def get_view(df, idx):
     return df.iloc[idx[0]:idx[1]]
 
 
-# %%
 @curry
 def get_user_session_journey(df, n_states, end_state='end_state'):
     unique_sessions = df['session'].unique()
@@ -427,7 +403,6 @@ def get_user_session_journey(df, n_states, end_state='end_state'):
     return chained_events
 
 
-# %%
 def test_user_4_sessions_2_events_expected_result():
     user = {"person":   [1, 1, 1, 1, 1, 1, 1, 1],
             "session":  [0, 0, 1, 1, 2, 2, 3, 3],
@@ -623,14 +598,11 @@ def test_two_users_4_sessions_2_events_expected_result_all_users():
     np.testing.assert_array_almost_equal(expected, list(transition_matrix))
 
 
-# %%
 test_user_4_sessions_2_events_sum_to_one()
 
-# %%
 test_user_4_sessions_2_events_expected_result()
 
 
-# %%
 def get_all_users_session_journeys(df, n_states, end_state):
     person_df = df.set_index('person').sort_index()
     unique_persons = person_df.index.unique()
@@ -652,13 +624,10 @@ def get_all_users_session_journeys(df, n_states, end_state):
     return chained_journeys
 
 
-# %%
 test_one_user_4_sessions_2_events_expected_result_all_users()
 
-# %%
 test_two_users_4_sessions_2_events_expected_result_all_users()
 
-# %%
 def test_markov_proba():
     tm = \
         np.array([[0.5, 0.3, 0.05, 0.15],
@@ -683,13 +652,11 @@ def test_markov_proba():
     print(markov_model.prediction_matrix)
 
 
-# %%
 start = time.time()
 test_markov_proba()
 end = time.time()
 print(end-start)
 
-# %%
 start = time.time()
 markov_model = MarkovModel(n_states=32).fit(data=df, start_state=30,
                                               target_state=18,
@@ -698,34 +665,27 @@ markov_model = MarkovModel(n_states=32).fit(data=df, start_state=30,
                                               n_training_chains=20_000)
 end = time.time() - start
 
-# %%
 # Sequential: 500_000 => 6.45
 end/60
 
-# %%
 # Threds: 500_00 => 8.27
 end/60
 
-# %%
 # Process: 500_000 => 5.25 min
 end/60
 
-# %%
 import seaborn as sns
 import matplotlib.pyplot as plt
 
-# %%
 df_journey_mm = pd.DataFrame(markov_model.transition_matrix,
                           columns=cat_dict['event'].values(),
                           index=cat_dict['event'].values())
 
-# %%
 fig, ax = plt.subplots(figsize=(25, 25))
 sns.heatmap(df_journey_mm, annot=True,
             linewidth=0.1, linecolor="white",
             ax=ax)
 plt.show(fig)
 
-# %%
 for (idx, val) in enumerate(markov_model.prediction_matrix):
     print("{}:\t\t{:.3f}".format(event_dict[idx], val))
