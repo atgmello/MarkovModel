@@ -3,23 +3,6 @@ import pandas as pd
 import concurrent.futures
 from itertools import chain, repeat
 from toolz import curry, sliding_window
-from src.data.load_clean_data import get_events_df
-
-import time
-
-df, cat_dict = get_events_df("./data/events_v5.csv", nrows=500_000,
-                             usecols=['person',
-                                      'timestamp',
-                                      'session',
-                                      'event'])
-event_dict = cat_dict['event']
-event_dict[30] = 'session-start'
-event_dict[31] = 'session-end'
-
-df.tail()
-
-print(df['timestamp'].min())
-print(df['timestamp'].max())
 
 
 class MarkovModel(object):
@@ -652,40 +635,4 @@ def test_markov_proba():
     print(markov_model.prediction_matrix)
 
 
-start = time.time()
 test_markov_proba()
-end = time.time()
-print(end-start)
-
-start = time.time()
-markov_model = MarkovModel(n_states=32).fit(data=df, start_state=30,
-                                              target_state=18,
-                                              # conversion
-                                              max_chain_length=1_000,
-                                              n_training_chains=20_000)
-end = time.time() - start
-
-# Sequential: 500_000 => 6.45
-end/60
-
-# Threds: 500_00 => 8.27
-end/60
-
-# Process: 500_000 => 5.25 min
-end/60
-
-import seaborn as sns
-import matplotlib.pyplot as plt
-
-df_journey_mm = pd.DataFrame(markov_model.transition_matrix,
-                          columns=cat_dict['event'].values(),
-                          index=cat_dict['event'].values())
-
-fig, ax = plt.subplots(figsize=(25, 25))
-sns.heatmap(df_journey_mm, annot=True,
-            linewidth=0.1, linecolor="white",
-            ax=ax)
-plt.show(fig)
-
-for (idx, val) in enumerate(markov_model.prediction_matrix):
-    print("{}:\t\t{:.3f}".format(event_dict[idx], val))
