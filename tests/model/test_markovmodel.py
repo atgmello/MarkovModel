@@ -13,21 +13,20 @@ def test_simulte_chain():
     tm = np.array([[0.5, 0.45, 0.05], [0.2, 0.79, 0.01], [0.0, 0.0, 1.0]])
     chain = simulate_chain([0], list(tm), 10)
     has_2 = is_in(2, chain)
-    print(chain)
-    print(has_2)
+
+    assert type(has_2) is bool
+    assert len(chain) == 10
 
 
 def test_simulate_chain_list():
     tm = np.array([[0.5, 0.45, 0.05], [0.2, 0.79, 0.01], [0.0, 0.0, 1.0]])
     chains = simulate_chain_list(0, tm, 100, 1_000)
-    print(np.mean(list(map(len, list(chains)))))
-    # assert mean_chain_length < 100
-    chains = simulate_chain_list(0, tm, 10, 5)
-    print(list(chains))
+    mean_chain_length = np.mean(list(map(len, list(chains))))
+
+    assert mean_chain_length < 100
 
 
-# Test generate_transition_matrix
-def test_3_events_list_5_total():
+def test__generate_transition_matrix__3_events_list_5_total():
     # Possible events: 0,1,2,3,4
     events_list = [1, 1, 2]
 
@@ -48,7 +47,7 @@ def test_3_events_list_5_total():
         assert (np.sum(row) == 1.0)
 
 
-def test_user_4_sessions_2_events_expected_result():
+def test__generate_transition_matrix__user_4_sessions_2_events():
     user = {"person":   [1, 1, 1, 1, 1, 1, 1, 1],
             "session":  [0, 0, 1, 1, 2, 2, 3, 3],
             "event":    [1, 2, 1, 2, 2, 2, 2, 2],
@@ -95,44 +94,11 @@ def test_user_4_sessions_2_events_expected_result():
 
     np.testing.assert_array_almost_equal(expected, list(transition_matrix))
 
-
-def test_user_4_sessions_2_events_sum_to_one():
-    user = {"person": [1, 1, 1, 1, 1, 1, 1, 1],
-            "session": [0, 0, 1, 1, 2, 2, 3, 3],
-            "event": [1, 2, 1, 2, 2, 2, 2, 2],
-            "timestamp": [pd.Timestamp(1513393355.5, unit='s'),
-                          pd.Timestamp(1513493355.5, unit='s'),
-                          pd.Timestamp(1514393355.5, unit='s'),
-                          pd.Timestamp(1514493355.5, unit='s'),
-                          pd.Timestamp(1515393355.5, unit='s'),
-                          pd.Timestamp(1515493355.5, unit='s'),
-                          pd.Timestamp(1516393355.5, unit='s'),
-                          pd.Timestamp(1516493355.5, unit='s')]}
-
-    df = pd.DataFrame.from_dict(user)
-
-    n_states = 5+2  # 2 artificial states: start_session and end_session
-    end_state = 6
-
-    events_list = get_user_session_journey(df, n_states=n_states,
-                                           end_state=end_state)
-    transition_matrix = generate_transition_matrix(list(events_list),
-                                                   n_states=n_states,
-                                                   end_state=end_state)
-
-    # Fix end_event transition to itself with prob 1.0
-    # due to domain application logic:
-    # after a user leaves the site there should be no
-    # more transitions
-    transition_matrix = list(transition_matrix)
-    transition_matrix[end_state] = np.insert(np.zeros(n_states-1),
-                                             end_state, 1.0)
-
     for row in list(transition_matrix):
         assert np.sum(row) == 1.0
 
 
-def test_one_user_4_sessions_2_events_expected_result_all_users():
+def test___get_all_users_session_journeys__1_user_4_ses_2_even():
     user = {"person":   [1, 1, 1, 1, 1, 1, 1, 1],
             "session":  [0, 0, 1, 1, 2, 2, 3, 3],
             "event":    [1, 2, 1, 2, 2, 2, 2, 2],
@@ -181,7 +147,7 @@ def test_one_user_4_sessions_2_events_expected_result_all_users():
     np.testing.assert_array_almost_equal(expected, list(transition_matrix))
 
 
-def test_two_users_4_sessions_2_events_expected_result_all_users():
+def test___get_all_users_session_journeys__2_user_4_ses_2_even():
     user = {"person":   [1, 1, 1, 1, 1, 1, 1, 1,
                          2, 2, 2, 2, 2, 2, 2, 2],
             "session":  [0, 0, 1, 1, 2, 2, 3, 3,
@@ -242,12 +208,11 @@ def test_two_users_4_sessions_2_events_expected_result_all_users():
     np.testing.assert_array_almost_equal(expected, list(transition_matrix))
 
 
-def test_markov_proba():
-    tm = \
-        np.array([[0.5, 0.3, 0.05, 0.15],
-                  [0.2, 0.59, 0.01, 0.2],
-                  [0.01, 0.01, 0.0, 0.98],
-                  [0.0, 0.0, 0.0, 1.0]])
+def test_markovmdel():
+    tm = np.array([[0.5, 0.3, 0.05, 0.15],
+                   [0.2, 0.59, 0.01, 0.2],
+                   [0.01, 0.01, 0.0, 0.98],
+                   [0.0, 0.0, 0.0, 1.0]])
     start_state = 0
     max_chain_length = 1_000
     n_training_chains = 10_000
@@ -256,11 +221,13 @@ def test_markov_proba():
 
     markov_model = MarkovModel(transition_matrix=tm)
 
-    np.testing.assert_almost_equal(tm, markov_model.transition_matrix)
-    assert markov_model.n_states == n_states
-
     markov_model.fit(start_state=start_state,
                      target_state=target_state,
                      max_chain_length=max_chain_length,
                      n_training_chains=n_training_chains)
-    print(markov_model.prediction_matrix)
+
+    np.testing.assert_almost_equal(tm, markov_model.transition_matrix)
+
+    assert markov_model.n_states == n_states
+
+    assert np.sum(markov_model.prediction_matrix) > 1.0
