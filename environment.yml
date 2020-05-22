@@ -1,0 +1,14 @@
+name: practicum
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - jupyter
+  - matplotlib
+  - nb_conda_kernels
+  - seaborn
+  - scipy
+  - pandas
+  - boto3
+  - plotly
+  - toolz
