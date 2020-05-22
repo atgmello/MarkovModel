@@ -1,0 +1,12 @@
+include *.txt
+include *.md
+include *.cfg
+recursive-include ./mm/*
+
+include mm/VERSION
+
+include ./requirements.txt
+exclude *.log
+
+recursive-exclude * __pycache__
+recursive-exclude * *.py[co]
