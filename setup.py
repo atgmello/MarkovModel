@@ -8,7 +8,7 @@ from pathlib import Path
 from setuptools import find_packages, setup
 
 # Package meta-data
-NAME = 'markovmodel'
+NAME = 'mm'
 DESCRIPTION = 'Markov Model implementation with sklearn-like API.'
 URL = 'https://github.com/atgmello/MarkovModel'
 EMAIL = 'andre.tgmello@gmail.com'
