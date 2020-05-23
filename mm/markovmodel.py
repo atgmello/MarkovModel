@@ -21,9 +21,9 @@ class MarkovModel(object):
             raise ValueError("Either `n_states` or `transition_matrix`"
                              "are required for building a MarkovModel.")
 
-    def fit(self, start_state=0,
+    def fit(self, data, start_state=0,
             target_state=1, max_chain_length=1_000,
-            n_training_chains=10_000, end_state='end_state', data=None):
+            n_training_chains=10_000, end_state='end_state'):
 
         if end_state == 'end_state':
             end_state = self.n_states - 1
