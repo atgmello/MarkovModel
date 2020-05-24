@@ -21,8 +21,8 @@ class MarkovModel(object):
             raise ValueError("Either `n_states` or `transition_matrix`"
                              "are required for building a MarkovModel.")
 
-    def fit(self, data, start_state=0,
-            target_state=1, max_chain_length=1_000,
+    def fit(self, data, start_state=30,
+            target_state=18, max_chain_length=1_000,
             n_training_chains=10_000, end_state='end_state'):
 
         if end_state == 'end_state':
@@ -94,11 +94,8 @@ def simulate_chain(chain, transition_matrix, max_chain_length=100):
     if len(chain) == max_chain_length:
         return chain
 
-    print(transition_matrix)
     current_state = chain[-1]
-    print(current_state)
     transition_prob = transition_matrix[current_state]
-    print(transition_prob)
     next_state = np.random.choice(np.arange(len(transition_matrix)),
                                   p=transition_prob)
 
