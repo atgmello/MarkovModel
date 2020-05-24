@@ -67,7 +67,7 @@ class MarkovModel(object):
         # Simulate markov chains for each possible state
         with concurrent.futures.ProcessPoolExecutor() as executor:
             training_chains = \
-                map(simulate_chain_list_from_state,
+                executor.map(simulate_chain_list_from_state,
                              range(self.n_states))
 
         # Calculate probability of seeing the `target_state` in each
@@ -94,8 +94,11 @@ def simulate_chain(chain, transition_matrix, max_chain_length=100):
     if len(chain) == max_chain_length:
         return chain
 
+    print(transition_matrix)
     current_state = chain[-1]
+    print(current_state)
     transition_prob = transition_matrix[current_state]
+    print(transition_prob)
     next_state = np.random.choice(np.arange(len(transition_matrix)),
                                   p=transition_prob)
 
@@ -353,7 +356,7 @@ def get_all_users_session_journeys(df, n_states, end_state):
                                                  end_state=end_state)
 
     with concurrent.futures.ProcessPoolExecutor() as executor:
-        users_journeys = map(n_states_journeys, person_views)
+        users_journeys = executor.map(n_states_journeys, person_views)
 
     chained_journeys = chain(*users_journeys)
 
