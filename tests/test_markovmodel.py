@@ -231,3 +231,36 @@ def test_markovmdel():
     assert markov_model.n_states == n_states
 
     assert np.sum(markov_model.prediction_matrix) > 1.0
+
+
+def test_pseudo_r2():
+    tm_sequential = [[0.1, 0.8, 0.1],
+                     [0.1, 0.1, 0.8],
+                     [0.8, 0.1, 0.1]]
+
+    tm_random = [[0.33, 0.33, 0.33],
+                 [0.33, 0.33, 0.33],
+                 [0.33, 0.33, 0.33]]
+
+    sequential_chain = [0, 1, 2, 0, 1, 2, 0, 1, 2]
+    random_chain = [0, 0, 2, 1, 1, 2, 0, 0, 2]
+
+    r2_seq = pseudo_r2(tm_sequential, tm_random, sequential_chain)
+    r2_rand = pseudo_r2(tm_sequential, tm_random, random_chain)
+
+    assert r2_seq > 0.0
+    assert r2_rand < 0.0
+
+
+def test_calculate_likelihood():
+    tm_sequential = [[0.1, 0.8, 0.1],
+                     [0.1, 0.1, 0.8],
+                     [0.8, 0.1, 0.1]]
+
+    sequential_chain = [0, 1, 2, 0, 1, 2, 0, 1, 2]
+    random_chain = [0, 0, 2, 1, 1, 2, 0, 0, 2]
+
+    l_seq = calculate_likelihood(tm_sequential, sequential_chain)
+    l_rand = calculate_likelihood(tm_sequential, random_chain)
+
+    assert l_seq > l_rand
