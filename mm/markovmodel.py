@@ -53,7 +53,7 @@ class MarkovModel(object):
             raise ValueError("Either `n_states` or `transition_matrix`"
                              "are required for building a MarkovModel.")
 
-    def fit(self, data, start_state=30,
+    def fit(self, X, start_state=30,
             target_state=18, max_chain_length=1_000,
             n_training_chains=10_000, end_state='end_state'):
 
@@ -64,7 +64,7 @@ class MarkovModel(object):
         if np.allclose(self.transition_matrix,
                        np.zeros((self.n_states, self.n_states))):
             events_list = \
-                get_all_users_session_journeys(data,
+                get_all_users_session_journeys(X,
                                                n_states=self.n_states,
                                                end_state=end_state)
 
@@ -82,7 +82,7 @@ class MarkovModel(object):
 
             self.transition_matrix = np.array(list(tm))
 
-        # Simulate markov chains starting from start_state
+        # Simulate Markov Chains starting from start_state
         aux_chains = simulate_chain_list(start_state,
                                          self.transition_matrix,
                                          max_chain_length,
@@ -96,14 +96,14 @@ class MarkovModel(object):
             simulate_chain_list(transition_matrix=self.transition_matrix,
                                 max_chain_length=median_chain_length,
                                 n_simulations=n_training_chains)
-        # Simulate markov chains for each possible state
+        # Simulate Markov Chains for each possible state
         with concurrent.futures.ProcessPoolExecutor() as executor:
             training_chains = \
                 executor.map(simulate_chain_list_from_state,
                              range(self.n_states))
 
         # Calculate probability of seeing the `target_state` in each
-        # markov chain for each possible state
+        # Markov Chain for each possible state
         probability_to_target_state = probability_to_state(target_state)
         proba = map(probability_to_target_state, training_chains)
 
@@ -285,7 +285,7 @@ def simulate_chain(chain, transition_matrix, max_chain_length=100):
 
     new_chain = np.append(chain, next_state)
 
-    # Returns if reaches ending state
+    # Returns if chain reaches absorbing state
     if current_state == next_state \
        and transition_matrix[next_state][next_state] == 1.0:
         return chain
@@ -296,6 +296,8 @@ def simulate_chain(chain, transition_matrix, max_chain_length=100):
 @curry
 def simulate_chain_list(initial_state, transition_matrix,
                         max_chain_length, n_simulations):
+    """Generate list of Markov Chains
+    """
     multi_chain_generator = simulate_chain(transition_matrix=transition_matrix,
                                            max_chain_length=max_chain_length)
     chains = map(multi_chain_generator,
@@ -336,17 +338,18 @@ def calculate_probability(row):
 
 
 def generate_transition_matrix(states, n_states, end_state=None):
-    """
-    Retrieves transition matrix from given states.
+    """Learns transition matrix from given Markov Chains.
 
     Given a list of states, a zip containing the original list and a shifted
     version will be created. Each pair in this zip shall denote the present
     and the next event that occured after it.
-    With that, a transition matrix can be calculated iteratively.
+    With that, a transition matrix can be learned in an iterative manner,
+    by counting such transitions between states and then calculating their
+    relative frequencies.
 
     Parameters
     ----------
-    states : array
+    states : array_like
         Array of shape (n_states), where n_states is the number of states
         expected for this model
 
