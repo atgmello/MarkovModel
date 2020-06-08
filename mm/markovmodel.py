@@ -5,7 +5,39 @@ from toolz import curry, sliding_window
 
 
 class MarkovModel(object):
-    """docstring for MarkovModel."""
+    """Markov Model
+
+    Given a list of Markov Chains, this model tries to learn the underlying
+    Transition Matrix that generates these Chains.
+    The approach taken is to first calculate the number of transitions between
+    each state taking into account all Markov Chains. Then, the relative
+    frequencies for each state is extracted. Using the Law of Large Numbers,
+    given enough data points (Markov Chains) it is expected that such
+    frequencies should approach the real transition probabilities.
+    Through a Monte Carlo method, this model can also run `n` simulations
+    in order to calculate the probability of each state transitioning to
+    another `target_state`.
+
+    Parameters
+    --------
+    n_states : int, default=None
+        Number of possible states in the Markov process.
+        Can be inferred if given a ``transition_matrix`` instead.
+
+    transition_matrix : ndarray of shape (n_states, n_states), default=None
+        Transition Matrix for the model. Can be given or learned
+        through ``fit``.
+
+    Attributes
+    --------
+    n_states : int
+
+    transition_matrix : ndarray of shape (n_states, n_states)
+
+    prediction_matrix : ndarray
+
+
+    """
 
     def __init__(self, n_states=None, transition_matrix=None):
         super(MarkovModel, self).__init__()
