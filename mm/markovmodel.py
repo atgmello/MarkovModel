@@ -5,7 +5,39 @@ from toolz import curry, sliding_window
 
 
 class MarkovModel(object):
-    """docstring for MarkovModel."""
+    """Markov Model
+
+    Given a list of Markov Chains, this model tries to learn the underlying
+    Transition Matrix that generates these Chains.
+    The approach taken is to first calculate the number of transitions between
+    each state taking into account all Markov Chains. Then, the relative
+    frequencies for each state is extracted. Using the Law of Large Numbers,
+    given enough data points (Markov Chains) it is expected that such
+    frequencies should approach the real transition probabilities.
+    Through a Monte Carlo method, this model can also run `n` simulations
+    in order to calculate the probability of each state transitioning to
+    another `target_state`.
+
+    Parameters
+    --------
+    n_states : int, default=None
+        Number of possible states in the Markov process.
+        Can be inferred if given a ``transition_matrix`` instead.
+
+    transition_matrix : ndarray of shape (n_states, n_states), default=None
+        Transition Matrix for the model. Can be given or learned
+        through ``fit``.
+
+    Attributes
+    --------
+    n_states : int
+
+    transition_matrix : ndarray of shape (n_states, n_states)
+
+    prediction_matrix : ndarray
+
+
+    """
 
     def __init__(self, n_states=None, transition_matrix=None):
         super(MarkovModel, self).__init__()
@@ -21,9 +53,9 @@ class MarkovModel(object):
             raise ValueError("Either `n_states` or `transition_matrix`"
                              "are required for building a MarkovModel.")
 
-    def fit(self, start_state=0,
-            target_state=1, max_chain_length=1_000,
-            n_training_chains=10_000, end_state='end_state', data=None):
+    def fit(self, X, start_state=30,
+            target_state=18, max_chain_length=1_000,
+            n_training_chains=10_000, end_state='end_state'):
 
         if end_state == 'end_state':
             end_state = self.n_states - 1
@@ -32,7 +64,7 @@ class MarkovModel(object):
         if np.allclose(self.transition_matrix,
                        np.zeros((self.n_states, self.n_states))):
             events_list = \
-                get_all_users_session_journeys(data,
+                get_all_users_session_journeys(X,
                                                n_states=self.n_states,
                                                end_state=end_state)
 
@@ -50,7 +82,7 @@ class MarkovModel(object):
 
             self.transition_matrix = np.array(list(tm))
 
-        # Simulate markov chains starting from start_state
+        # Simulate Markov Chains starting from start_state
         aux_chains = simulate_chain_list(start_state,
                                          self.transition_matrix,
                                          max_chain_length,
@@ -64,14 +96,14 @@ class MarkovModel(object):
             simulate_chain_list(transition_matrix=self.transition_matrix,
                                 max_chain_length=median_chain_length,
                                 n_simulations=n_training_chains)
-        # Simulate markov chains for each possible state
+        # Simulate Markov Chains for each possible state
         with concurrent.futures.ProcessPoolExecutor() as executor:
             training_chains = \
-                map(simulate_chain_list_from_state,
+                executor.map(simulate_chain_list_from_state,
                              range(self.n_states))
 
         # Calculate probability of seeing the `target_state` in each
-        # markov chain for each possible state
+        # Markov Chain for each possible state
         probability_to_target_state = probability_to_state(target_state)
         proba = map(probability_to_target_state, training_chains)
 
@@ -82,15 +114,167 @@ class MarkovModel(object):
     def predict(self, x):
         return self.prediction_matrix[x]
 
+    def score(self, x):
+        """MacFadden's Pseudo-R2 in relation to the null model.
+
+        Compares the log-likelihood from the model in `self.transition_matrix`
+        and the one from the baseline/null model, that is, a transition matrix
+        having the same transition probabilities from all events to all events.
+        The higher the score, the better the learned transition matrix is in
+        comparison to the null model [1]_.
+
+        The null model is one which the transition matrix holds equal transition
+        probabilities from any event to any other event given by 1/#states.
+
+        For instance:
+        A null model for a Markov process with 4 states should have a transition
+        matrix in which all of its entries are 0.25, i.e. the probability of any
+        state transitioning to any other is simply 0.25.
+
+        See also
+        --------
+        markovmodel.pseudo_r2
+
+        References
+        --------
+        .. [1] https://stats.stackexchange.com/questions/82105/mcfaddens-pseudo-r2-interpretation
+        """
+        null_transition_prob = 1.0/self.n_states
+        null_tm = np.reshape(np.repeat(np.repeat(null_transition_prob,
+                                                 self.n_states),
+                                       self.n_states),
+                             (self.n_states, self.n_states))
+        compare_model_to_null = pseudo_r2(self.transition_matrix, null_tm)
+        pseudo_r2_list = list(map(compare_model_to_null, x))
+        mean_pseudo_r2 = np.mean(pseudo_r2_list)
+
+        return mean_pseudo_r2
+
+    def log_likelihood(self, x):
+        model_likelihood = calculate_likelihood(self.transition_matrix)
+        likelihood_list = list(map(model_likelihood, x))
+        log_mean = np.log(np.mean(likelihood_list))
+
+        return log_mean
+
+
+@curry
+def pseudo_r2(numerator_tm, denominator_tm, x):
+    """MacFadden's Pseudo-R2 for Transition Matrices
+
+    This function adapts the idea of MacFadden's Pseudo-R2 [1]_ to be used in
+    the context transition matrices.
+    It compares the log-likelihood achieved by the `numerator_tm` and the
+    `denominator_tm`, which should usually be the transition matrix learned
+    by the model and the transition matrix from the null model, respectively.
+
+    Parameters
+    ----------
+    numerator_tm : array_like
+    denominator_tm : array_like
+    x : array_like
+        Markov Chain data.
+
+    Returns
+    ----------
+    pseudo_r2 : float
+
+    References
+    ----------
+    .. [1] https://stats.idre.ucla.edu/other/mult-pkg/faq/general/faq-what-are-pseudo-r-squareds/
+    """
+
+    numerator_likelihood = calculate_likelihood(numerator_tm, x)
+    denominator_likelihood = calculate_likelihood(denominator_tm, x)
+    pseudo_r2 = 1 - np.log(numerator_likelihood)/np.log(denominator_likelihood)
+    return pseudo_r2
+
+
+@curry
+def calculate_likelihood(transition_matrix, x, acc=1.0):
+    """Calculates the likelihood of a transition matrix given data
+
+    Given a transition matrix `transition_matrix` and a Markov Chain `x`, this
+    function calculates the probability of this matrix being the one to generate
+    this Markov Chain. In other words, it calculates the likelihood [1]_ [2]_ of
+    the model.
+    TODO: remove tail call recursion. :(
+
+    Parameters
+    ----------
+    transition_matrix : array_like or sparse matrix
+        Array of shape (n_states, n_states), where n_states is the number
+        states of the Markov process.
+    x : array_like
+        Array of data samples.
+    acc : float (optional, default=1.0)
+        Accumulator for holding the multiplicative chain
+
+    Returns
+    -------
+    z : ndarray
+        result of shape (n_samples,).  Note that here we use "ndarray" rather
+        than "array_like", because we assure we'll return a numpy array.
+    xmin, xmax : integers
+        if multiple parameters have similar description, then they can
+        be combined.
+    optional_info : dict
+        returned only if flag is True.  More info about this return value.
+
+    References
+    ----------
+    .. [1] https://en.wikipedia.org/wiki/Likelihood_function
+    .. [2] https://www.statisticshowto.com/likelihood-function/
+    """
+    if len(x) == 1:
+        return acc
+
+    new_acc = acc * transition_matrix[x[0]][x[1]]
+    return calculate_likelihood(transition_matrix, x[1:], new_acc)
+
 
 @curry
 def is_in(x, l):
+    """Transforms into set and checks existence
+
+    Given an element `x` and an array-like `l`, this function turns `l` into a
+    set and checks the existence of `x` in `l`.
+
+    Parameters
+    --------
+    x : any
+    l : array-like
+
+    Returns
+    --------
+    bool
+
+    """
     return x in set(l)
 
 
 @curry
 def simulate_chain(chain, transition_matrix, max_chain_length=100):
-    # Return if reaches max_chain_length
+    """Markov Chain generator
+
+    TODO: remove tail call recursion. :(
+
+    Parameters
+    ----------
+    transition_matrix : array_like or sparse matrix
+        Array of shape (n_states, n_states), where n_states is the number
+        states of the Markov process.
+    chain : array_like
+        Markov Chain.
+    max_chain_length : int (optional, default=100)
+        Max Markov Chain length.
+
+    Returns
+    -------
+    chain : ndarray
+    """
+
+    # Return if chain reaches max_chain_length
     if len(chain) == max_chain_length:
         return chain
 
@@ -101,7 +285,7 @@ def simulate_chain(chain, transition_matrix, max_chain_length=100):
 
     new_chain = np.append(chain, next_state)
 
-    # Returns if reaches ending state
+    # Returns if chain reaches absorbing state
     if current_state == next_state \
        and transition_matrix[next_state][next_state] == 1.0:
         return chain
@@ -112,6 +296,8 @@ def simulate_chain(chain, transition_matrix, max_chain_length=100):
 @curry
 def simulate_chain_list(initial_state, transition_matrix,
                         max_chain_length, n_simulations):
+    """Generate list of Markov Chains
+    """
     multi_chain_generator = simulate_chain(transition_matrix=transition_matrix,
                                            max_chain_length=max_chain_length)
     chains = map(multi_chain_generator,
@@ -152,17 +338,18 @@ def calculate_probability(row):
 
 
 def generate_transition_matrix(states, n_states, end_state=None):
-    """
-    Retrieves transition matrix from given states.
+    """Learns transition matrix from given Markov Chains.
 
     Given a list of states, a zip containing the original list and a shifted
     version will be created. Each pair in this zip shall denote the present
     and the next event that occured after it.
-    With that, a transition matrix can be calculated iteratively.
+    With that, a transition matrix can be learned in an iterative manner,
+    by counting such transitions between states and then calculating their
+    relative frequencies.
 
     Parameters
     ----------
-    states : array
+    states : array_like
         Array of shape (n_states), where n_states is the number of states
         expected for this model
 
@@ -353,7 +540,7 @@ def get_all_users_session_journeys(df, n_states, end_state):
                                                  end_state=end_state)
 
     with concurrent.futures.ProcessPoolExecutor() as executor:
-        users_journeys = map(n_states_journeys, person_views)
+        users_journeys = executor.map(n_states_journeys, person_views)
 
     chained_journeys = chain(*users_journeys)
 
