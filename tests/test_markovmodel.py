@@ -1,21 +1,30 @@
 import numpy as np
 import pandas as pd
-from src.model.markovmodel import (is_in,
-                                   simulate_chain,
-                                   simulate_chain_list,
-                                   generate_transition_matrix,
-                                   get_user_session_journey,
-                                   get_all_users_session_journeys,
-                                   MarkovModel)
+from mm.markovmodel import (is_in,
+                            simulate_chain,
+                            simulate_chain_list,
+                            generate_transition_matrix,
+                            get_user_session_journey,
+                            get_all_users_session_journeys,
+                            pseudo_r2,
+                            calculate_likelihood,
+                            MarkovModel)
 
 
 def test_simulte_chain():
-    tm = np.array([[0.5, 0.45, 0.05], [0.2, 0.79, 0.01], [0.0, 0.0, 1.0]])
-    chain = simulate_chain([0], list(tm), 10)
-    has_2 = is_in(2, chain)
+    tm_seq = np.array([[0.0, 1.0, 0.0], [0.0, 0.0, 1.0], [0.0, 0.0, 1.0]])
+    chain_seq = simulate_chain([0], list(tm_seq), 50)
+    has_2_seq = is_in(2, chain_seq)
 
-    assert type(has_2) is bool
-    assert len(chain) == 10
+    assert type(has_2_seq) is bool
+    assert len(chain_seq) == 3
+
+    tm_rand = np.array([[0.5, 0.45, 0.05], [0.2, 0.79, 0.01], [0.0, 0.0, 1.0]])
+    chain_rand = simulate_chain([0], list(tm_rand), 50)
+    has_2_rand = is_in(2, chain_rand)
+
+    assert type(has_2_rand) is bool
+    assert len(chain_rand) <= 50
 
 
 def test_simulate_chain_list():
