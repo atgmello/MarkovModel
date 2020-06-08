@@ -230,7 +230,8 @@ def test_markovmdel():
 
     markov_model = MarkovModel(transition_matrix=tm)
 
-    markov_model.fit(start_state=start_state,
+    markov_model.fit(X=[],
+                     start_state=start_state,
                      target_state=target_state,
                      max_chain_length=max_chain_length,
                      n_training_chains=n_training_chains)
