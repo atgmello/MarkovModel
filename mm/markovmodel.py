@@ -225,12 +225,9 @@ def calculate_likelihood(transition_matrix, x, acc=1.0):
     .. [1] https://en.wikipedia.org/wiki/Likelihood_function
     .. [2] https://www.statisticshowto.com/likelihood-function/
     """
-    if len(x) < 2:
-        return acc
-
-    new_acc = acc * transition_matrix[x[0]][x[1]]
-    #TODO: remove tail recursion. :(
-    return calculate_likelihood(transition_matrix, x[1:], new_acc)
+    for state in sliding_window(2, x):
+        acc *= transition_matrix[state[0]][state[1]]
+    return acc
 
 
 @curry
