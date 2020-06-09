@@ -198,7 +198,6 @@ def calculate_likelihood(transition_matrix, x, acc=1.0):
     function calculates the probability of this matrix being the one to generate
     this Markov Chain. In other words, it calculates the likelihood [1]_ [2]_ of
     the model.
-    TODO: remove tail call recursion. :(
 
     Parameters
     ----------
@@ -212,24 +211,22 @@ def calculate_likelihood(transition_matrix, x, acc=1.0):
 
     Returns
     -------
-    z : ndarray
-        result of shape (n_samples,).  Note that here we use "ndarray" rather
-        than "array_like", because we assure we'll return a numpy array.
-    xmin, xmax : integers
-        if multiple parameters have similar description, then they can
-        be combined.
-    optional_info : dict
-        returned only if flag is True.  More info about this return value.
+    acc : float
+
+    Notes
+    --------
+    Note that for zero and one element chains this function always returns 1.0.
 
     References
     ----------
     .. [1] https://en.wikipedia.org/wiki/Likelihood_function
     .. [2] https://www.statisticshowto.com/likelihood-function/
     """
-    if len(x) == 1:
+    if len(x) < 2:
         return acc
 
     new_acc = acc * transition_matrix[x[0]][x[1]]
+    #TODO: remove tail recursion. :(
     return calculate_likelihood(transition_matrix, x[1:], new_acc)
 
 
@@ -256,8 +253,6 @@ def is_in(x, l):
 @curry
 def simulate_chain(chain, transition_matrix, max_chain_length=100):
     """Markov Chain generator
-
-    TODO: remove tail call recursion. :(
 
     Parameters
     ----------
@@ -290,6 +285,7 @@ def simulate_chain(chain, transition_matrix, max_chain_length=100):
        and transition_matrix[next_state][next_state] == 1.0:
         return chain
 
+    #TODO: remove tail recursion. :(
     return simulate_chain(new_chain, transition_matrix, max_chain_length)
 
 
@@ -320,10 +316,6 @@ def probability_to_state(state, chain_list):
     proba = bool_list.count(True)/len(bool_list)
 
     return proba
-
-
-def markov_mean(m):
-    return np.sum(m, axis=0)/np.sum(m)
 
 
 def zero_division_guard(f):
