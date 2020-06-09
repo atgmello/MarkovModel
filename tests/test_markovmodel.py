@@ -107,7 +107,7 @@ def test__generate_transition_matrix__user_4_sessions_2_events():
         assert np.sum(row) == 1.0
 
 
-def test___get_all_users_session_journeys__1_user_4_ses_2_even():
+def test__get_all_users_session_journeys__1_user_4_ses_2_even():
     user = {"person":   [1, 1, 1, 1, 1, 1, 1, 1],
             "session":  [0, 0, 1, 1, 2, 2, 3, 3],
             "event":    [1, 2, 1, 2, 2, 2, 2, 2],
@@ -156,7 +156,7 @@ def test___get_all_users_session_journeys__1_user_4_ses_2_even():
     np.testing.assert_array_almost_equal(expected, list(transition_matrix))
 
 
-def test___get_all_users_session_journeys__2_user_4_ses_2_even():
+def test__get_all_users_session_journeys__2_user_4_ses_2_even():
     user = {"person":   [1, 1, 1, 1, 1, 1, 1, 1,
                          2, 2, 2, 2, 2, 2, 2, 2],
             "session":  [0, 0, 1, 1, 2, 2, 3, 3,
