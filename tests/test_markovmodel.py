@@ -236,12 +236,26 @@ def test_markovmdel():
                      max_chain_length=max_chain_length,
                      n_training_chains=n_training_chains)
 
-    np.testing.assert_almost_equal(tm, markov_model.transition_matrix)
+    test_chains_good = [[0, 0, 1, 1], [0, 1, 2, 3]]
+    score_good = markov_model.score(test_chains_good)
+
+    test_chains_bad = [[3, 2, 1, 0], [2, 2, 2, 2]]
+    score_bad = markov_model.score(test_chains_bad)
+
+    test_chains_ugly = [[0, 1], [0], []]
+    score_ugly = markov_model.score(test_chains_ugly)
 
     assert markov_model.n_states == n_states
 
     assert np.sum(markov_model.prediction_matrix) > 1.0
 
+    np.testing.assert_almost_equal(tm, markov_model.transition_matrix)
+
+    assert score_good > 0.0
+
+    assert score_bad < 0.0
+
+    assert score_ugly > 0.0
 
 def test_pseudo_r2():
     tm_sequential = [[0.1, 0.8, 0.1],
