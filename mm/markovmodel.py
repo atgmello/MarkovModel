@@ -146,7 +146,10 @@ class MarkovModel(object):
                              (self.n_states, self.n_states))
         compare_model_to_null = pseudo_r2(self.transition_matrix, null_tm)
         pseudo_r2_list = list(map(compare_model_to_null, x))
-        mean_pseudo_r2 = np.mean(pseudo_r2_list)
+        # To avoid the extreme corner case in which the denominator from the
+        # division in pseudo_r2 is zero (that is, the null model reaches
+        # likelihood of 1.0), use np.nanmean.
+        mean_pseudo_r2 = np.nanmean(pseudo_r2_list)
 
         return mean_pseudo_r2
 
