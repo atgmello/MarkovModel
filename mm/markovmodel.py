@@ -3,6 +3,7 @@ import concurrent.futures
 from itertools import chain, repeat
 from toolz import curry, sliding_window
 
+NEAR_ZERO = 10e-12
 
 class MarkovModel(object):
     """Markov Model
@@ -146,9 +147,6 @@ class MarkovModel(object):
                              (self.n_states, self.n_states))
         compare_model_to_null = pseudo_r2(self.transition_matrix, null_tm)
         pseudo_r2_list = list(map(compare_model_to_null, x))
-        # To avoid the extreme corner case in which the denominator from the
-        # division in pseudo_r2 is zero (that is, the null model reaches
-        # likelihood of 1.0), use np.nanmean.
         mean_pseudo_r2 = np.nanmean(pseudo_r2_list)
 
         return mean_pseudo_r2
@@ -188,13 +186,21 @@ def pseudo_r2(numerator_tm, denominator_tm, x):
     """
 
     numerator_likelihood = calculate_likelihood(numerator_tm, x)
+    # Avoid log(0.0)
+    numerator_likelihood = np.where(numerator_likelihood==0.0, NEAR_ZERO,
+                                    numerator_likelihood)
+
     denominator_likelihood = calculate_likelihood(denominator_tm, x)
+    # Avoid log(0.0)
+    denominator_likelihood = np.where(denominator_likelihood==0.0, NEAR_ZERO,
+                                      denominator_likelihood)
+
     pseudo_r2 = 1 - np.log(numerator_likelihood)/np.log(denominator_likelihood)
     return pseudo_r2
 
 
 @curry
-def calculate_likelihood(transition_matrix, x, acc=1.0):
+def calculate_likelihood(transition_matrix, x, acc=0.999):
     """Calculates the likelihood of a transition matrix given data
 
     Given a transition matrix `transition_matrix` and a Markov Chain `x`, this
@@ -209,8 +215,9 @@ def calculate_likelihood(transition_matrix, x, acc=1.0):
         states of the Markov process.
     x : array_like
         Array of data samples.
-    acc : float (optional, default=1.0)
-        Accumulator for holding the multiplicative chain
+    acc : float (optional, default=0.999)
+        Accumulator for holding the multiplicative chain.
+        Defaults to 0.999 rather than 1.0 to avoid complications wit log.
 
     Returns
     -------
