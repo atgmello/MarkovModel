@@ -223,8 +223,8 @@ def test_markovmdel():
                    [0.01, 0.01, 0.0, 0.98],
                    [0.0, 0.0, 0.0, 1.0]])
     start_state = 0
-    max_chain_length = 1_000
-    n_training_chains = 10_000
+    max_chain_length = 100
+    n_training_chains = 1_000
     n_states = 4
     target_state = 2
 
@@ -236,10 +236,10 @@ def test_markovmdel():
                      max_chain_length=max_chain_length,
                      n_training_chains=n_training_chains)
 
-    test_chains_good = [[0, 0, 1, 1], [0, 1, 2, 3]]
+    test_chains_good = [[0, 0], [0, 0, 1, 1], [0, 1, 2, 3]]
     score_good = markov_model.score(test_chains_good)
 
-    test_chains_bad = [[3, 2, 1, 0], [2, 2, 2, 2]]
+    test_chains_bad = [[3, 3], [2,2], [3, 2, 1, 0]]
     score_bad = markov_model.score(test_chains_bad)
 
     test_chains_ugly = [[0, 1], [0], []]
@@ -252,10 +252,16 @@ def test_markovmdel():
     np.testing.assert_almost_equal(tm, markov_model.transition_matrix)
 
     assert score_good > 0.0
+    assert score_good < np.inf
 
     assert score_bad < 0.0
+    assert score_bad > -np.inf
 
     assert score_ugly > 0.0
+    assert score_good < np.inf
+
+    assert score_good > score_bad
+    assert score_good > score_ugly
 
 def test_pseudo_r2():
     tm_sequential = [[0.1, 0.8, 0.1],
@@ -272,8 +278,14 @@ def test_pseudo_r2():
     r2_seq = pseudo_r2(tm_sequential, tm_random, sequential_chain)
     r2_rand = pseudo_r2(tm_sequential, tm_random, random_chain)
 
+    assert r2_seq > r2_rand
+
     assert r2_seq > 0.0
+    assert r2_seq < np.inf
+
     assert r2_rand < 0.0
+    assert r2_rand > -np.inf
+
 
 
 def test_calculate_likelihood():
@@ -288,3 +300,9 @@ def test_calculate_likelihood():
     l_rand = calculate_likelihood(tm_sequential, random_chain)
 
     assert l_seq > l_rand
+
+    assert l_seq < np.inf
+    assert l_seq > -np.inf
+
+    assert l_rand < np.inf
+    assert l_rand > -np.inf
