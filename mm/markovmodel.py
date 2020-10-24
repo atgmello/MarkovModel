@@ -299,24 +299,20 @@ def simulate_chain(chain, transition_matrix, max_chain_length=100):
     """
 
     # Return if chain reaches max_chain_length
-    if len(chain) == max_chain_length:
-        return chain
+    while len(chain) < max_chain_length:
+        current_state = chain[-1]
+        transition_prob = transition_matrix[current_state]
+        next_state = np.random.choice(np.arange(len(transition_matrix)),
+                                      p=transition_prob)
 
-    current_state = chain[-1]
-    transition_prob = transition_matrix[current_state]
-    next_state = np.random.choice(np.arange(len(transition_matrix)),
-                                  p=transition_prob)
+        chain = np.append(chain, next_state)
 
-    new_chain = np.append(chain, next_state)
+        # Returns if chain reaches absorbing state
+        if current_state == next_state \
+           and transition_matrix[next_state][next_state] == 1.0:
+            return chain
 
-    # Returns if chain reaches absorbing state
-    if current_state == next_state \
-       and transition_matrix[next_state][next_state] == 1.0:
-        return chain
-
-    #TODO: remove tail recursion. :(
-    return simulate_chain(new_chain, transition_matrix, max_chain_length)
-
+    return chain
 
 @curry
 def simulate_chain_list(initial_state, transition_matrix,
