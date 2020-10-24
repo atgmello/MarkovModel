@@ -40,10 +40,15 @@ class MarkovModel(object):
 
     """
 
-    def __init__(self, n_states=None, transition_matrix=None):
+    def __init__(self, n_states=None, start_state=None,
+                 target_state=None, end_state=None,
+                 transition_matrix=None):
         super(MarkovModel, self).__init__()
         if n_states is not None and transition_matrix is None:
             self.n_states = n_states
+            self.start_state = start_state
+            self.end_state = end_state
+            self.target_state = target_state
             self.transition_matrix = np.zeros((self.n_states, self.n_states))
             self.prediction_matrix = np.zeros(self.n_states)
         elif transition_matrix is not None:
@@ -54,12 +59,25 @@ class MarkovModel(object):
             raise ValueError("Either `n_states` or `transition_matrix`"
                              "are required for building a MarkovModel.")
 
-    def fit(self, X, start_state=30,
-            target_state=18, max_chain_length=1_000,
-            n_training_chains=10_000, end_state='end_state'):
+    def fit(self, X, start_state=None,
+            target_state=None, max_chain_length=1_000,
+            n_training_chains=10_000, end_state=None):
 
-        if end_state == 'end_state':
-            end_state = self.n_states - 1
+        if end_state is None:
+            if self.end_state is not None:
+                end_state = self.end_state
+            else:
+                end_state = self.n_states - 1
+        if start_state is None:
+            if self.start_state is not None:
+                start_state = self.start_state
+            else:
+                raise ValueError("Missing start_state argument.")
+        if target_state is None:
+            if self.target_state is not None:
+                target_state = self.target_state
+            else:
+                raise ValueError("Missing target_state argument.")
 
         # Check if self.transition_matrix isn't already "trained"
         if np.allclose(self.transition_matrix,
