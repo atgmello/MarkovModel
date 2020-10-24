@@ -61,7 +61,7 @@ class MarkovModel(object):
 
     def fit(self, X, start_state=None,
             target_state=None, max_chain_length=1_000,
-            n_training_chains=10_000, end_state=None):
+            n_training_chains=1_000, end_state=None):
 
         if end_state is None:
             if self.end_state is not None:
@@ -82,22 +82,26 @@ class MarkovModel(object):
         # Check if self.transition_matrix isn't already "trained"
         if np.allclose(self.transition_matrix,
                        np.zeros((self.n_states, self.n_states))):
-            events_list = \
-                get_all_users_session_journeys(X,
-                                               n_states=self.n_states,
-                                               end_state=end_state)
+            # TODO: Remove.
+            #       This is a piece related to my original usecase
+            # events_list = \
+            #     get_all_users_session_journeys(X,
+            #                                    n_states=self.n_states,
+            #                                    end_state=end_state)
 
-            tm = generate_transition_matrix(list(events_list),
+            tm = generate_transition_matrix(X,
                                             n_states=self.n_states,
                                             end_state=end_state)
 
+            # TODO: Make this part more general
+            #       Just removing it for now
             # Fix end_event transition to itself with prob 1.0
-            # due to domain application logic:
+            # due to domain logic:
             # after a user leaves the site there should be no
             # more transitions
-            tm = list(tm)
-            tm[end_state] = np.insert(np.zeros(self.n_states-1),
-                                      end_state, 1.0)
+            # tm = list(tm)
+            # tm[end_state] = np.insert(np.zeros(self.n_states-1),
+            #                           end_state, 1.0)
 
             self.transition_matrix = np.array(list(tm))
 
@@ -354,15 +358,14 @@ def calculate_probability(row):
     return row/np.sum(row)
 
 
-def generate_transition_matrix(states, n_states, end_state=None):
+def generate_transition_matrix(chains_list, n_states, end_state=None):
     """Learns transition matrix from given Markov Chains.
 
-    Given a list of states, a zip containing the original list and a shifted
-    version will be created. Each pair in this zip shall denote the present
-    and the next event that occured after it.
-    With that, a transition matrix can be learned in an iterative manner,
-    by counting such transitions between states and then calculating their
-    relative frequencies.
+    For each Markov Chains in a list, a zip containing the original
+    list and a shifted version will be created. Each pair in this zip shall
+    denote the present and the next "event" that occurred after it. With that, a
+    transition matrix can be learned in an iterative manner, by counting such
+    transitions between states and then calculating their relative frequencies.
 
     Parameters
     ----------
@@ -377,10 +380,12 @@ def generate_transition_matrix(states, n_states, end_state=None):
     """
 
     transition_matrix = np.zeros((n_states, n_states))
-    present_next_event = sliding_window(2, states)
 
-    for idx in list(present_next_event):
-        transition_matrix[idx] += 1
+    state_transitions = chain(*map(lambda c: sliding_window(2, c),
+                                   chains_list))
+
+    for idx in state_transitions:
+        transition_matrix[tuple(idx)] += 1
 
     # TODO:
     # Treat NaNs before continuing
